@@ -33,17 +33,6 @@ public class Quadro extends Variavel{
         return coluna;
     }
     
-    public void setDominio(LinkedList<Object> dominio){
-        this.dominio = dominio;
-    }
-    
-    public void addVariavelLigada(DiferenteRestricao rest, Quadro quadro){
-        if(this.variaveisLigadas.get(rest.tipo) == null){
-            this.variaveisLigadas.put(rest.tipo, new LinkedList<>());
-        }
-        this.variaveisLigadas.get(rest.tipo).add(quadro);
-    }
-    
     public void fixar(){
         this.fixed = true;
     }

@@ -19,7 +19,7 @@ import java.util.logging.Logger;
  */
 public class Carregar {
     
-    private CSP csp;
+    private SudokuCSP csp;
     private int numSudoku;
     private final int dimensao = 9;
     
@@ -43,7 +43,7 @@ public class Carregar {
             
             System.out.println("################ Instância " + (instancia + 1) + " ################");
             
-            this.csp = new CSP();
+            this.csp = new SudokuCSP();
             
             for(int i = 0; i < dimensao; i++){
                 linha = lerArq.readLine();

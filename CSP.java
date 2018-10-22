@@ -5,46 +5,45 @@
  */
 package sudoku;
 
+import java.util.HashMap;
 import java.util.LinkedList;
 
 /**
  *
  * @author CLIENTE
  */
-public class CSP {
+public abstract class CSP {
     
-    private LinkedList<Quadro> variaveis = new LinkedList<Quadro>();
-    private Atribuicao atribuicao = new Atribuicao();
-    private DiferenteRestricao diferenteRes = new DiferenteRestricao("diferente");
-    private LinkedList<Object> dominio = new LinkedList<>();
-    private Atribuicao melhorAtribuicao = new Atribuicao();
+    protected LinkedList<Variavel> variaveis = new LinkedList<>();
+    protected Atribuicao atribuicao = new Atribuicao();
+    protected LinkedList<Object> dominio = new LinkedList<>();
+    protected LinkedList<Restricao> restricoes = new LinkedList<>();
     
     public CSP(){
         
     }
     
-    public void addVariavel(Quadro quadro){
-        this.variaveis.add(quadro);
+    public void addVariavel(Variavel var){
+        this.variaveis.add((Quadro)var);
     }
     
-    public void atribui(Quadro quadro, Object valor){
-        this.atribuicao.atribuir(quadro, valor);   
-        quadro.alocar();
+    public void atribui(Variavel variavel, Object valor){
+        this.atribuicao.atribuir(variavel, valor);   
+        variavel.alocar();
     }
     
-    public void atribuiForward(Quadro quadro, Object valor){
-        this.atribui(quadro, valor);
-        for(Variavel var : quadro.variaveisLigadas.get(diferenteRes.tipo)){
-            Quadro quadroVar = (Quadro)var;
-            if(!quadroVar.fixo()){
-                if(quadroVar.dominio.contains(valor)){
-                    quadroVar.removeDominio(valor);
+    public void atribuiForward(Variavel variavel, Object valor){
+        this.atribui(variavel, valor);
+        for(Restricao res : this.restricoes){
+            for(Variavel var : variavel.variaveisLigadas.get(res.tipo)){
+                if(!res.satisfaz(atribuicao, var, valor)){
+                    var.removeDominio(valor);
                 }
             }
         }
     }
-    
-    public Object desatribuir(Quadro quadro){
+
+    public Object desatribuir(Variavel quadro){
         
         Object valor = this.atribuicao.getValor(quadro);
         this.atribuicao.desatribuir(quadro);
@@ -52,84 +51,66 @@ public class CSP {
         return valor;
     }
     
-    public void desatribuirForward(Quadro quadro){
-        Object valor = this.desatribuir(quadro);
-        for(Variavel var : quadro.variaveisLigadas.get(diferenteRes.tipo)){
-            Quadro quadroVar = (Quadro)var;
-            if(!quadroVar.fixo()){
-                if(diferenteRes.satisfaz(atribuicao, var, valor)){
-                    if(!var.dominio.contains(valor))
-                        var.addDominio(valor);
-                }
-            }
-        }
-    }
-    
-    public void setMelhorAtribuicao(Atribuicao atribuicao){
-        this.melhorAtribuicao = new Atribuicao();
-        this.melhorAtribuicao.setSolucao(atribuicao);
-    }
-    
-    public void setVariaveisAdjacentes(){
-        for(Quadro quadro: this.variaveis){
-            
-            for(int i = 0; i < this.variaveis.size(); i++){
-                Quadro quadro2 = this.variaveis.get(i);
-                if(!quadro.equals(quadro2)){
-                    if(verificaQuadrante(quadro.getLinha()) == verificaQuadrante(quadro2.getLinha()) 
-                            && verificaQuadrante(quadro.getColuna()) == verificaQuadrante(quadro2.getColuna())){
-                        quadro.addVariavelLigada(diferenteRes, quadro2);
-                    }else if(quadro.getLinha() == quadro2.getLinha() || quadro.getColuna() == quadro2.getColuna()){
-                        quadro.addVariavelLigada(diferenteRes, quadro2);
+    public void desatribuirForward(Variavel variavel){
+        
+        HashMap<Variavel,LinkedList<Object>> valido = new HashMap<>();
+        boolean teste = false;
+        
+        Object valor = this.desatribuir(variavel);
+        for(Restricao res : this.restricoes){
+            for(Variavel var : variavel.variaveisLigadas.get(res.tipo)){
+                if(res.satisfaz(atribuicao, var, valor)){
+                    if(valido.containsKey(var)){
+                        if(!var.dominio.contains(valor))
+                            valido.get(var).add(valor);
+                    }else{
+                        if(!var.dominio.contains(valor)){
+                            valido.put(var, new LinkedList<>());
+                            valido.get(var).add(valor);
+                        }
+                    }
+                }else{
+                    if(valido.containsKey(var)){
+                        if(valido.get(var).contains(valor)){
+                            valido.get(var).remove(valor);
+                        }
                     }
                 }
             }
         }
-    }
-    
-    public int verificaQuadrante(int valor){
-        return valor - (valor % 3);
-    }
-    
-    public void setDominios(){
-        for(int i = 1; i <= 9; i++){
-            this.dominio.add(i);
-        }
-        for(Quadro quadro : this.variaveis){
-            for(int i = 0; i < this.dominio.size();i++){
-                if(atribuicao.getValor(quadro) != null){
-                    quadro.dominio.add(atribuicao.getValor(quadro));
-                    break;
-                }
-                if(diferenteRes.satisfaz(atribuicao, quadro, this.dominio.get(i))){
-                    quadro.addDominio(this.dominio.get(i));
-                }
+        for(Variavel var : valido.keySet()){
+            for(Object val : valido.get(var)){
+                var.addDominio(val);
             }
         }
     }
     
-    public Quadro menorDominio(){
+    public abstract void setVariaveisAdjacentes();
+    
+    public abstract void setDominios();
+    
+    public Variavel menorDominio(){
         
-        Quadro menorQuadro = null;
+        Variavel menorVar = null;
         int menorDominio = Integer.MAX_VALUE;
         
-        for(Quadro quadro : this.variaveis){
-            if(!quadro.alocada && !quadro.fixo()){
-                if(quadro.dominio.size() < menorDominio){
-                    menorQuadro = quadro;
-                    menorDominio = quadro.dominio.size();
+        for(Variavel var : this.variaveis){
+            if(!var.alocada){
+                if(var.dominio.size() < menorDominio){
+                    menorVar = var;
+                    menorDominio = var.dominio.size();
                 }
             }
         }
         
-        return menorQuadro;
+        return menorVar;
         
     }
     
-    public Quadro variavelLivre(){
-        for(Quadro quadro : this.variaveis){
-            if(!quadro.alocada){
-                return quadro;
+    public Variavel variavelLivre(){
+        for(Variavel var : this.variaveis){
+            if(!var.alocada){
+                return var;
             }
         }
         return null;
@@ -143,39 +124,8 @@ public class CSP {
         return this.variaveis.size();
     }
     
-    public void imprimeMelhor(){
-        System.out.println("");
-        int linha = 0;
-        for(Quadro quadro : variaveis){
-            if(linha < quadro.getLinha()){
-                System.out.println("");
-                linha = quadro.getLinha();
-            }
-            if(this.melhorAtribuicao.getValor(quadro) == null){
-                System.out.print("0 ");
-            }else{
-                System.out.print(this.melhorAtribuicao.getValor(quadro) + " ");
-            }
-        }
-        System.out.println("");
-    }
-    
-    public void imprimeVariaveis(){
-        System.out.println("");
-        int linha = 0;
-        for(Quadro quadro : variaveis){
-            if(linha < quadro.getLinha()){
-                System.out.println("");
-                linha = quadro.getLinha();
-            }
-            if(this.atribuicao.getValor(quadro) == null){
-                System.out.print("0 ");
-            }else{
-                System.out.print(this.atribuicao.getValor(quadro) + " ");
-            }
-        }
-        System.out.println("");
-    }
+    public abstract void imprimeVariaveis();
+        
     
     public int tamDominio(){
         return this.dominio.size();

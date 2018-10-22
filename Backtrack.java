@@ -30,7 +30,7 @@ public class Backtrack {
             csp.imprimeVariaveis();
             return atribuicao;
         }
-        Quadro quadro = csp.menorDominio();
+        Variavel quadro = csp.menorDominio();
         if(quadro.dominio.isEmpty()){
             atribuicao.falhou();
             return atribuicao;
